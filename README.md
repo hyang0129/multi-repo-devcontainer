@@ -174,6 +174,24 @@ python scripts/run_with_server.py --step all --task precisewikiqa \
   --model meta-llama/Llama-3.1-8B-Instruct --N 100
 ```
 
+## GitHub CLI Authentication
+
+The container forwards `GITHUB_TOKEN` from the host environment, giving `gh` access for PRs, issues, cloning, and API calls.
+
+**One-time host setup:**
+
+1. On the host, retrieve your token from the existing `gh` session:
+   ```bash
+   gh auth token
+   ```
+2. Add it to your host shell profile (`.bashrc`, `.zshrc`, or Windows `$PROFILE`):
+   ```bash
+   export GITHUB_TOKEN=<token from above>
+   ```
+3. Rebuild the container — `gh` will automatically detect the token
+
+**Note:** `gh auth status` will report "not logged in" but all commands still work. This approach covers ~95% of dev workflows. It does not support SSH key management or interactive OAuth flows.
+
 ## How-To
 
 ### Adding a Repo
