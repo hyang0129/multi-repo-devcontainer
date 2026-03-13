@@ -1,0 +1,50 @@
+{
+  "name": "Multi-Repo Hub",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+
+  "workspaceFolder": "/workspaces/hub",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/hub,type=bind,consistency=cached",
+
+  "mounts": [
+    "source=${localWorkspaceFolderBasename}-venvs,target=/workspaces/.venvs,type=volume",
+    "source=${localWorkspaceFolderBasename}-hf-cache,target=/home/vscode/.cache/huggingface,type=volume",
+    "source=${localWorkspaceFolderBasename}-build-cache,target=/workspaces/hub/repos/live2d/build,type=volume"
+  ],
+
+  "runArgs": [
+    "--gpus", "all",
+    "--shm-size", "8g"
+  ],
+
+  "containerEnv": {
+    "NVIDIA_VISIBLE_DEVICES": "all",
+    "NVIDIA_DRIVER_CAPABILITIES": "compute,utility,graphics",
+    "HF_HOME": "/home/vscode/.cache/huggingface"
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "anthropic.claude-code",
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-toolsai.jupyter",
+        "charliermarsh.ruff",
+        "ms-vscode.cmake-tools",
+        "ms-vscode.cpptools"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/workspaces/.venvs/${workspaceFolderBasename}/bin/python"
+      }
+    }
+  },
+
+  "forwardPorts": [8000],
+
+  "initializeCommand": ".devcontainer\\initialize.cmd",
+  "postCreateCommand": ".devcontainer/post-create.sh",
+  "remoteUser": "vscode"
+}

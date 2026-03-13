@@ -1,0 +1,26 @@
+{
+  "folders": [
+    { "name": "hub",          "path": "." },
+    { "name": "video_agent",  "path": "repos/video_agent" },
+    { "name": "live2d",       "path": "repos/live2d" },
+    { "name": "chatterbox",   "path": "repos/chatterbox" },
+    { "name": "HalluLens",    "path": "repos/HalluLens" }
+  ],
+  "settings": {
+    "python.defaultInterpreterPath": "/workspaces/.venvs/${workspaceFolderBasename}/bin/python",
+    "terminal.integrated.cwd": "${workspaceFolder}",
+    "git.scanRepositories": [
+      "repos/video_agent",
+      "repos/live2d",
+      "repos/chatterbox",
+      "repos/HalluLens"
+    ],
+    "search.exclude": {
+      "**/.venvs": true,
+      "**/build": true,
+      "**/__pycache__": true,
+      "**/node_modules": true,
+      "**/cubism": true
+    }
+  }
+}
