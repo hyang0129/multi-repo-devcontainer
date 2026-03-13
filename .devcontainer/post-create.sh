@@ -36,10 +36,13 @@ for repo_name in "${!REPO_PYTHON[@]}"; do
 
   [ ! -d "$repo_dir" ] && continue
 
-  if [ ! -d "$venv_path" ]; then
-    echo "Creating venv for $repo_name with $py ..."
-    "$py" -m venv "$venv_path"
+  if [ -d "$venv_path" ]; then
+    echo "Venv for $repo_name already exists — skipping install."
+    continue
   fi
+
+  echo "Creating venv for $repo_name with $py ..."
+  "$py" -m venv "$venv_path"
 
   # Install requirements if present
   if [ -f "$repo_dir/requirements.txt" ]; then

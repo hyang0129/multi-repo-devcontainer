@@ -222,6 +222,25 @@ code .
 # Ctrl+Shift+P → "Dev Containers: Reopen in Container"
 ```
 
+**Fast setup — clone Docker volumes from an existing copy:**
+
+If you already have a working `devcontainer1` with all venvs and model weights installed,
+you can copy those volumes instead of rebuilding from scratch:
+
+```bash
+# Clone all three volumes (run on the Windows/host side, not inside a container)
+for suffix in venvs hf-cache build-cache; do
+  docker volume create devcontainer2-$suffix
+  docker run --rm \
+    -v devcontainer1-$suffix:/src:ro \
+    -v devcontainer2-$suffix:/dst \
+    alpine sh -c "cp -a /src/. /dst/"
+done
+```
+
+When the container starts, `post-create.sh` sees the pre-existing venvs and skips all
+pip installs. This turns a 10+ minute first-run into seconds.
+
 **Why this works:**
 - Volume names use `${localWorkspaceFolderBasename}` — so `devcontainer2` gets
   `devcontainer2-venvs`, `devcontainer2-hf-cache`, etc. No collisions.
