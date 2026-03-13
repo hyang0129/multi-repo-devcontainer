@@ -15,7 +15,7 @@ A single dev container hosting four related repositories in one VSCode window, w
 
 ```
 Windows Host
-  devcontainer1\                          ← this repo (opened by VSCode)
+  devcontainer<N>\                        ← this repo (opened by VSCode)
     repos/
       video_agent\                        ← cloned repo
       live2d\                             ← cloned repo
@@ -25,7 +25,7 @@ Windows Host
       │  Docker Desktop (--gpus all, --shm-size 8g)
       ▼
 Linux Container (nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04)
-  /workspaces/hub/                        ← workspaceFolder
+  /workspaces/hub<N>/                     ← workspaceFolder (matches devcontainer<N>)
     repos/
       video_agent/                        ← visible via workspace mount
       live2d/                             ← visible via workspace mount
@@ -81,7 +81,7 @@ A **two-tier CLAUDE.md** strategy prevents unintended cross-repo edits:
 
 ```bash
 # 1. Clone this hub repo
-git clone <this-repo-url> devcontainer1
+git clone <this-repo-url> devcontainer1   # use devcontainer2, devcontainer3, etc. for extra copies
 cd devcontainer1
 
 # 2. Clone the project repos
@@ -95,7 +95,7 @@ code .
 # Then: Ctrl+Shift+P → "Dev Containers: Reopen in Container"
 
 # 4. Once inside the container, open the multi-root workspace
-# File → Open Workspace from File → /workspaces/hub/workspace.code-workspace
+# File → Open Workspace from File → /workspaces/hub<N>/workspace.code-workspace
 ```
 
 The `post-create.sh` script automatically:
@@ -107,7 +107,7 @@ The `post-create.sh` script automatically:
 ## File Reference
 
 ```
-devcontainer1/
+devcontainer<N>/
   .devcontainer/
     devcontainer.json       # GPU, shm-size, named volumes, extensions
     Dockerfile              # CUDA 12.8 + Python 3.10/3.11/3.12 + CMake + Mesa/EGL + FFmpeg
@@ -152,7 +152,7 @@ source /workspaces/.venvs/HalluLens/bin/activate       # Python 3.12
 ### Build live2d (C++)
 
 ```bash
-cd /workspaces/hub/repos/live2d
+cd /workspaces/hub<N>/repos/live2d
 cmake --preset linux
 cmake --build --preset linux
 ```
@@ -161,7 +161,7 @@ cmake --build --preset linux
 
 ```bash
 source /workspaces/.venvs/chatterbox/bin/activate
-cd /workspaces/hub/repos/chatterbox
+cd /workspaces/hub<N>/repos/chatterbox
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
@@ -169,7 +169,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 ```bash
 source /workspaces/.venvs/HalluLens/bin/activate
-cd /workspaces/hub/repos/HalluLens
+cd /workspaces/hub<N>/repos/HalluLens
 python scripts/run_with_server.py --step all --task precisewikiqa \
   --model meta-llama/Llama-3.1-8B-Instruct --N 100
 ```
@@ -190,12 +190,12 @@ Reverse the above. Optionally clean up: `rm -rf /workspaces/.venvs/<name>`
 
 ### Adding a Repo from a Different Host Path
 
-For repos outside `devcontainer1/repos/`, add a bind mount in `devcontainer.json`:
+For repos outside `devcontainer<N>/repos/`, add a bind mount in `devcontainer.json`:
 
 ```jsonc
 "mounts": [
     // ... existing mounts ...
-    "source=C:\\path\\to\\external-repo,target=/workspaces/hub/repos/external-repo,type=bind,consistency=cached"
+    "source=C:\\path\\to\\external-repo,target=/workspaces/hub<N>/repos/external-repo,type=bind,consistency=cached"
 ]
 ```
 
@@ -241,9 +241,22 @@ done
 When the container starts, `post-create.sh` sees the pre-existing venvs and skips all
 pip installs. This turns a 10+ minute first-run into seconds.
 
+**Important — update container name and workspace paths:**
+
+Each copy of this template must update `devcontainer.json` so the container name and
+internal paths reflect the copy number. For example, `devcontainer2` should use:
+
+- `"name": "Multi-Repo Hub 2"` (not just "Multi-Repo Hub")
+- `"workspaceFolder": "/workspaces/hub2"` (not `/workspaces/hub`)
+- All `workspaceMount`, `mounts`, and `git.scanRepositories` paths updated to `/workspaces/hub2`
+
+This avoids confusion when multiple containers are running and ensures the VS Code window
+title, terminal prompts, and Docker container names are distinguishable.
+
 **Why this works:**
 - Volume names use `${localWorkspaceFolderBasename}` — so `devcontainer2` gets
   `devcontainer2-venvs`, `devcontainer2-hf-cache`, etc. No collisions.
+- Workspace paths use `hub<N>` to match `devcontainer<N>`, keeping container internals unique.
 - Each copy runs in its own Docker container with its own bind mount.
 - GPU is shared (both containers can use `--gpus all`), but VRAM is first-come-first-served.
 
