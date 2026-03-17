@@ -32,7 +32,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         # Storage (HalluLens)
         liblmdb-dev \
         # Misc
-        libffi-dev libssl-dev unzip
+        libffi-dev libssl-dev unzip jq
 
 # ── Python 3.10, 3.11, 3.12 via deadsnakes ─────────────────────
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \

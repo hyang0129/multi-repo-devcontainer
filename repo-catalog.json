@@ -1,0 +1,29 @@
+{
+  "repos": {
+    "video_agent": {
+      "url": "https://github.com/hyang0129/video_agent.git",
+      "python": "3.10",
+      "description": "Multi-agent video content pipeline (LangChain + FFmpeg)"
+    },
+    "live2d": {
+      "url": "https://github.com/hyang0129/live2d.git",
+      "python": "3.11",
+      "description": "C++/Python Live2D avatar renderer (D3D11/OpenGL + FastAPI)"
+    },
+    "chatterbox": {
+      "url": "https://github.com/hyang0129/chatterbox.git",
+      "python": "3.11",
+      "description": "Chatterbox Turbo TTS server (FastAPI, CUDA required)"
+    },
+    "HalluLens": {
+      "url": "https://github.com/hyang0129/HalluLens.git",
+      "python": "3.12",
+      "description": "LLM hallucination detection via activation analysis (vLLM, CUDA required)"
+    }
+  },
+  "service_dependencies": {
+    "video_agent": ["chatterbox"]
+  },
+  "shared_system_deps": ["cuda-12.8", "cmake-3.28", "ninja", "ffmpeg"],
+  "forward_ports": [8000]
+}

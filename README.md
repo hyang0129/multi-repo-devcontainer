@@ -1,8 +1,8 @@
 # Multi-Repo Dev Container
 
-A single dev container hosting four related repositories in one VSCode window, with shared system dependencies (CUDA 12.8, CMake, FFmpeg) and per-repo Python isolation.
+A template for creating devcontainer instances that host multiple related repositories in one VS Code window, with shared system dependencies (CUDA 12.8, CMake, FFmpeg) and per-repo Python isolation.
 
-## Repositories
+## Available Repositories
 
 | Repo | Language | Python | CUDA | Purpose |
 |------|----------|--------|------|---------|
@@ -14,36 +14,98 @@ A single dev container hosting four related repositories in one VSCode window, w
 ## Architecture
 
 ```
-Windows Host
-  devcontainer<N>\                        ← this repo (opened by VSCode)
-    repos/
-      video_agent\                        ← cloned repo
-      live2d\                             ← cloned repo
-      chatterbox\                         ← cloned repo
-      HalluLens\                          ← cloned repo
+d:/containers/
+  multi-repo-devcontainer/          <-- This template repo (on GitHub)
+    .devcontainer/
+    repo-catalog.json
+    setup-instructions.md
+
+  hub_1/                            <-- Instance 1 (generated from template)
+    .devcontainer/                  <-- Copied from template, patched per-instance
+    manifest.json                   <-- Which repos are active
+    workspace.code-workspace        <-- Generated multi-root workspace
+    CLAUDE.md                       <-- Generated context segregation rules
+    video_agent/                    <-- Cloned repo (direct child, no repos/ subdir)
+    live2d/
+    chatterbox/
       │
       │  Docker Desktop (--gpus all, --shm-size 8g)
       ▼
-Linux Container (nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04)
-  /workspaces/hub<N>/                     ← workspaceFolder (matches devcontainer<N>)
-    repos/
-      video_agent/                        ← visible via workspace mount
-      live2d/                             ← visible via workspace mount
-      chatterbox/                         ← visible via workspace mount
-      HalluLens/                          ← visible via workspace mount
-  /workspaces/.venvs/                     ← named Docker volume
-    video_agent/    (Python 3.10)
-    live2d/         (Python 3.11)
-    chatterbox/     (Python 3.11)
-    HalluLens/      (Python 3.12)
-  /home/vscode/.cache/huggingface/        ← named Docker volume (model weights)
+  Linux Container (nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04)
+    /workspaces/hub_1/              <-- workspaceFolder (bind mount)
+      video_agent/
+      live2d/
+      chatterbox/
+    /workspaces/.venvs/             <-- Named Docker volume
+      video_agent/    (Python 3.10)
+      live2d/         (Python 3.11)
+      chatterbox/     (Python 3.11)
+    /home/vscode/.cache/huggingface/  <-- Named Docker volume (model weights)
+
+  hub_2/                            <-- Instance 2 (different repo selection)
+    .devcontainer/
+    manifest.json
+    HalluLens/
+    video_agent/
 ```
+
+### Key Design Decisions
+
+- **Template + Instance model**: This repo is the template; instances are stamped out from it. Instances are NOT git repos — only the code repos inside them have `.git/`.
+- **Repos as direct children**: No `repos/` subdirectory. Shorter paths, cleaner layout.
+- **Auto-scoped volumes**: Volume names use `${localWorkspaceFolderBasename}` (e.g., `hub_1-venvs`, `hub_2-venvs`). No collisions between instances.
+- **Bind mount for source code**: Windows can access test artifacts (video, audio, images) via Explorer. Heavy I/O (venvs, builds, model cache) uses named volumes.
+
+## Setup
+
+### Prerequisites
+
+- Windows 10/11 with Docker Desktop (WSL 2 backend)
+- NVIDIA GPU + drivers installed
+- Git, VS Code with Dev Containers extension
+
+### Creating an Instance
+
+The recommended workflow is to ask Claude Code to create an instance — it reads `setup-instructions.md` and `repo-catalog.json` to automate the process.
+
+**Manual steps:**
+
+```bash
+# 1. Clone this template (if not already present)
+git clone https://github.com/hyang0129/multi-repo-devcontainer d:/containers/multi-repo-devcontainer
+
+# 2. Create an instance directory
+mkdir d:/containers/hub_1
+
+# 3. Copy devcontainer config
+cp -r d:/containers/multi-repo-devcontainer/.devcontainer d:/containers/hub_1/
+cp d:/containers/multi-repo-devcontainer/repo-catalog.json d:/containers/hub_1/
+cp d:/containers/multi-repo-devcontainer/.gitattributes d:/containers/hub_1/
+
+# 4. Clone repos you need
+cd d:/containers/hub_1
+git clone https://github.com/hyang0129/video_agent.git video_agent
+git clone https://github.com/hyang0129/live2d.git live2d
+git clone https://github.com/hyang0129/chatterbox.git chatterbox
+
+# 5. Create manifest.json (see setup-instructions.md for format)
+# 6. Patch devcontainer.json workspaceFolder to /workspaces/hub_1
+# 7. Generate workspace.code-workspace and CLAUDE.md
+# 8. Open in VS Code → "Dev Containers: Reopen in Container"
+```
+
+The `post-create.sh` script automatically:
+- Propagates your git identity from the Windows host
+- Reads `manifest.json` + `repo-catalog.json` to determine which repos need venvs
+- Creates a Python venv for each repo (with the correct Python version)
+- Installs each repo's `requirements.txt` into its venv
+- Marks all repos as `git safe.directory`
 
 ## Design Pillars
 
 ### 1. Single-Window Workflow
 
-A VSCode **multi-root workspace** file (`workspace.code-workspace`) lists all repos as separate root folders. One Explorer sidebar, one integrated terminal per repo, one set of extensions.
+A VS Code **multi-root workspace** file (`workspace.code-workspace`) lists all repos as separate root folders. One Explorer sidebar, one integrated terminal per repo, one set of extensions.
 
 ### 2. Context Segregation (Claude Code)
 
@@ -51,10 +113,8 @@ A **two-tier CLAUDE.md** strategy prevents unintended cross-repo edits:
 
 | Layer | File | Purpose |
 |-------|------|---------|
-| Hub | `CLAUDE.md` | Enforces "ask which repo" for ambiguous prompts. Repo inventory. Prohibits cross-repo edits. |
-| Per-repo | `repos/<name>/CLAUDE.md` | Repo-specific build commands, architecture, conventions. |
-
-**Key rule:** If a prompt like "add logging" doesn't specify a repo, Claude must stop and ask.
+| Hub | `CLAUDE.md` (per-instance) | Enforces "ask which repo" for ambiguous prompts. Repo inventory. |
+| Per-repo | `<repo>/CLAUDE.md` | Repo-specific build commands, architecture, conventions. |
 
 ### 3. Shared Dependencies, Isolated Environments
 
@@ -64,77 +124,21 @@ A **two-tier CLAUDE.md** strategy prevents unintended cross-repo edits:
 | Per-repo | Python packages | `/workspaces/.venvs/<repo>/` (named volume) |
 | Cached | HuggingFace model weights | `/home/vscode/.cache/huggingface/` (named volume) |
 
-- **System Python is a venv seed only** — never `pip install` into it.
-- **Venvs in a named Docker volume** — fast I/O (avoids bind-mount penalty), survives rebuilds.
-- **Three Python versions** installed (3.10, 3.11, 3.12). Each venv is created with the version its repo needs.
-- **CUDA is shared** — the NVIDIA base image sets `LD_LIBRARY_PATH`. PyTorch cu124 and cu128 wheels both work on the 12.8 runtime.
+### 4. Manifest-Driven Configuration
 
-## Setup
-
-### Prerequisites
-
-- Windows 10/11 with Docker Desktop (WSL 2 backend)
-- NVIDIA GPU + drivers installed
-- Git
-
-### Steps
-
-```bash
-# 1. Clone this hub repo
-git clone <this-repo-url> devcontainer1   # use devcontainer2, devcontainer3, etc. for extra copies
-cd devcontainer1
-
-# 2. Clone the project repos
-git clone https://github.com/hyang0129/video_agent.git  repos/video_agent
-git clone https://github.com/hyang0129/live2d.git        repos/live2d
-git clone https://github.com/hyang0129/chatterbox.git    repos/chatterbox
-git clone https://github.com/hyang0129/HalluLens.git     repos/HalluLens
-
-# 3. Open in VSCode and reopen in container
-code .
-# Then: Ctrl+Shift+P → "Dev Containers: Reopen in Container"
-
-# 4. Once inside the container, open the multi-root workspace
-# File → Open Workspace from File → /workspaces/hub<N>/workspace.code-workspace
-```
-
-The `post-create.sh` script automatically:
-- Propagates your git identity from the Windows host
-- Creates a Python venv for each repo (with the correct Python version)
-- Installs each repo's `requirements.txt` into its venv
-- Marks all repos as `git safe.directory`
-
-## File Reference
-
-```
-devcontainer<N>/
-  .devcontainer/
-    devcontainer.json       # GPU, shm-size, named volumes, extensions
-    Dockerfile              # CUDA 12.8 + Python 3.10/3.11/3.12 + CMake + Mesa/EGL + FFmpeg
-    initialize.cmd          # Windows host: WSL cleanup + git identity capture
-    post-create.sh          # Linux: git config, per-repo venvs, requirements install
-  .gitattributes            # Line ending enforcement (*.sh → LF, *.cmd → CRLF)
-  .gitignore                # Exclude .gituser.tmp and repos/
-  workspace.code-workspace  # Multi-root workspace (hub + 4 repos)
-  CLAUDE.md                 # Context segregation rules + repo inventory
-  README.md                 # This file
-  repos/                    # Cloned repositories (gitignored)
-    video_agent/
-    live2d/
-    chatterbox/
-    HalluLens/
-```
+- `repo-catalog.json` — the full registry of available repos (URLs, Python versions, service dependencies)
+- `manifest.json` — per-instance file declaring which repos are active
+- `post-create.sh` reads both via `jq` — no hardcoded repo lists
 
 ## Named Docker Volumes
 
 Volume names are derived from the host folder name (`${localWorkspaceFolderBasename}`),
-so each copy of this workspace gets its own isolated volumes automatically.
+so each instance gets its own isolated volumes automatically.
 
 | Volume pattern | Mount | Purpose |
 |----------------|-------|---------|
 | `<folder>-venvs` | `/workspaces/.venvs` | Per-repo Python venvs |
-| `<folder>-hf-cache` | `/home/vscode/.cache/huggingface` | HuggingFace model weights (chatterbox, HalluLens) |
-| `<folder>-build-cache` | `repos/live2d/build` | CMake build artifacts |
+| `<folder>-hf-cache` | `/home/vscode/.cache/huggingface` | HuggingFace model weights |
 
 These survive container rebuilds. To reset, delete via `docker volume rm <name>`.
 
@@ -143,16 +147,13 @@ These survive container rebuilds. To reset, delete via `docker volume rm <name>`
 ### Activate a repo's venv
 
 ```bash
-source /workspaces/.venvs/video_agent/bin/activate    # Python 3.10
-source /workspaces/.venvs/live2d/bin/activate          # Python 3.11
-source /workspaces/.venvs/chatterbox/bin/activate      # Python 3.11
-source /workspaces/.venvs/HalluLens/bin/activate       # Python 3.12
+source /workspaces/.venvs/<repo_name>/bin/activate
 ```
 
 ### Build live2d (C++)
 
 ```bash
-cd /workspaces/hub<N>/repos/live2d
+cd /workspaces/hub_N/live2d
 cmake --preset linux
 cmake --build --preset linux
 ```
@@ -161,17 +162,8 @@ cmake --build --preset linux
 
 ```bash
 source /workspaces/.venvs/chatterbox/bin/activate
-cd /workspaces/hub<N>/repos/chatterbox
+cd /workspaces/hub_N/chatterbox
 uvicorn app.main:app --host 0.0.0.0 --port 8000
-```
-
-### Run HalluLens experiments
-
-```bash
-source /workspaces/.venvs/HalluLens/bin/activate
-cd /workspaces/hub<N>/repos/HalluLens
-python scripts/run_with_server.py --step all --task precisewikiqa \
-  --model meta-llama/Llama-3.1-8B-Instruct --N 100
 ```
 
 ## GitHub CLI Authentication
@@ -190,99 +182,43 @@ The container forwards `GITHUB_TOKEN` from the host environment, giving `gh` acc
    ```
 3. Rebuild the container — `gh` will automatically detect the token
 
-**Note:** `gh auth status` will report "not logged in" but all commands still work. This approach covers ~95% of dev workflows. It does not support SSH key management or interactive OAuth flows.
-
 ## How-To
 
-### Adding a Repo
+### Adding a Repo to the Catalog
 
-1. Clone it into `repos/`: `git clone <url> repos/<name>`
-2. Add a `folders` entry in `workspace.code-workspace`
-3. Add a row to the Repo Inventory in `CLAUDE.md`
-4. Add a `REPO_PYTHON` entry in `post-create.sh` (maps repo name → Python version)
-5. Rebuild the container — venv is auto-created
+1. Add the repo entry to `repo-catalog.json` in the template
+2. If it has service dependencies, add those to the `service_dependencies` section
+3. Commit and push the template repo
 
-### Removing a Repo
+### Adding a Repo to an Existing Instance
 
-Reverse the above. Optionally clean up: `rm -rf /workspaces/.venvs/<name>`
+1. Clone it: `git clone <url> <repo_name>` (inside the instance directory)
+2. Update `manifest.json` to include the repo name
+3. Add a `folders` entry in `workspace.code-workspace`
+4. Add a row to the Repo Inventory in `CLAUDE.md`
+5. Rebuild the container — venv is auto-created from catalog + manifest
 
-### Adding a Repo from a Different Host Path
+### Fast Setup — Clone Docker Volumes
 
-For repos outside `devcontainer<N>/repos/`, add a bind mount in `devcontainer.json`:
-
-```jsonc
-"mounts": [
-    // ... existing mounts ...
-    "source=C:\\path\\to\\external-repo,target=/workspaces/hub<N>/repos/external-repo,type=bind,consistency=cached"
-]
-```
-
-Then follow the same steps as above for workspace + CLAUDE.md + post-create.sh.
-
-## Running Multiple Copies (Parallel Claude Sessions)
-
-You can run multiple independent dev containers from this template on the same host.
-Each copy gets its own Docker container and volumes — no state is shared.
-
-```bash
-# 1. Clone a second copy with a different folder name
-git clone <this-repo-url> devcontainer2
-cd devcontainer2
-
-# 2. Clone the repos you need (can be different branches)
-git clone https://github.com/hyang0129/video_agent.git  repos/video_agent
-git clone https://github.com/hyang0129/live2d.git        repos/live2d
-git clone https://github.com/hyang0129/chatterbox.git    repos/chatterbox
-git clone https://github.com/hyang0129/HalluLens.git     repos/HalluLens
-
-# 3. Open in a new VSCode window and reopen in container
-code .
-# Ctrl+Shift+P → "Dev Containers: Reopen in Container"
-```
-
-**Fast setup — clone Docker volumes from an existing copy:**
-
-If you already have a working `devcontainer1` with all venvs and model weights installed,
+If you already have a working `hub_1` with all venvs and model weights installed,
 you can copy those volumes instead of rebuilding from scratch:
 
 ```bash
-# Clone all three volumes (run on the Windows/host side, not inside a container)
-for suffix in venvs hf-cache build-cache; do
-  docker volume create devcontainer2-$suffix
+for suffix in venvs hf-cache; do
+  docker volume create hub_2-$suffix
   docker run --rm \
-    -v devcontainer1-$suffix:/src:ro \
-    -v devcontainer2-$suffix:/dst \
+    -v hub_1-$suffix:/src:ro \
+    -v hub_2-$suffix:/dst \
     alpine sh -c "cp -a /src/. /dst/"
 done
 ```
 
-When the container starts, `post-create.sh` sees the pre-existing venvs and skips all
-pip installs. This turns a 10+ minute first-run into seconds.
+## Port Conflict Strategy
 
-**Important — update container name and workspace paths:**
-
-Each copy of this template must update `devcontainer.json` so the container name and
-internal paths reflect the copy number. For example, `devcontainer2` should use:
-
-- `"name": "Multi-Repo Hub 2"` (not just "Multi-Repo Hub")
-- `"workspaceFolder": "/workspaces/hub2"` (not `/workspaces/hub`)
-- All `workspaceMount`, `mounts`, and `git.scanRepositories` paths updated to `/workspaces/hub2`
-
-This avoids confusion when multiple containers are running and ensures the VS Code window
-title, terminal prompts, and Docker container names are distinguishable.
-
-**Why this works:**
-- Volume names use `${localWorkspaceFolderBasename}` — so `devcontainer2` gets
-  `devcontainer2-venvs`, `devcontainer2-hf-cache`, etc. No collisions.
-- Workspace paths use `hub<N>` to match `devcontainer<N>`, keeping container internals unique.
-- Each copy runs in its own Docker container with its own bind mount.
-- GPU is shared (both containers can use `--gpus all`), but VRAM is first-come-first-served.
-
-**Tips for parallel use:**
-- Use different branch checkouts in each copy's `repos/` to work on separate features.
-- If both containers forward the same port (e.g. 8000), change `forwardPorts` in one
-  copy's `devcontainer.json`, or just use different ports inside the container.
-- Each copy has its own Claude Code context — the `CLAUDE.md` in each copy is independent.
+Multiple instances forwarding the same port will conflict. Assign ports based on instance number:
+- `hub_1`: 8000
+- `hub_2`: 8001
+- etc.
 
 ## Pitfalls (Windows + Docker Desktop)
 

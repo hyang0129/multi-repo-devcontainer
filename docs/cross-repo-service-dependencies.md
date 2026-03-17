@@ -45,12 +45,12 @@ The fixture:
 5. Terminates the process on teardown.
 
 ```python
-# repos/video_agent/tests/integration/conftest.py
+# video_agent/tests/integration/conftest.py
 import os, subprocess, time
 import pytest, requests
 
 CHATTERBOX_PYTHON = "/workspaces/.venvs/chatterbox/bin/python"
-CHATTERBOX_DIR    = "/workspaces/hub/repos/chatterbox"
+CHATTERBOX_DIR    = os.path.join(os.environ.get("HUB_DIR", "/workspaces/hub_1"), "chatterbox")
 CHATTERBOX_PORT   = 8000
 
 @pytest.fixture(scope="session")

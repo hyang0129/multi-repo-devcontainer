@@ -1,17 +1,19 @@
 {
-  "name": "Multi-Repo Hub",
+  "name": "${localWorkspaceFolderBasename}",
   "build": {
     "dockerfile": "Dockerfile",
     "context": "."
   },
 
-  "workspaceFolder": "/workspaces/hub",
-  "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/hub,type=bind,consistency=cached",
+  // IMPORTANT: workspaceFolder does NOT support variable substitution.
+  // The setup process must patch this value per-instance (e.g., /workspaces/hub_1).
+  // See setup-instructions.md Step 7.
+  "workspaceFolder": "/workspaces/hub_N",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/hub_N,type=bind,consistency=cached",
 
   "mounts": [
     "source=${localWorkspaceFolderBasename}-venvs,target=/workspaces/.venvs,type=volume",
-    "source=${localWorkspaceFolderBasename}-hf-cache,target=/home/vscode/.cache/huggingface,type=volume",
-    "source=${localWorkspaceFolderBasename}-build-cache,target=/workspaces/hub/repos/live2d/build,type=volume"
+    "source=${localWorkspaceFolderBasename}-hf-cache,target=/home/vscode/.cache/huggingface,type=volume"
   ],
 
   "runArgs": [

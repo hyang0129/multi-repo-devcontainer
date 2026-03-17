@@ -4,6 +4,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 HUB_DIR="$(dirname "$SCRIPT_DIR")"
 VENV_BASE="/workspaces/.venvs"
+CATALOG="$HUB_DIR/repo-catalog.json"
+MANIFEST="$HUB_DIR/manifest.json"
 
 # ── Git identity (captured by initialize.cmd) ──────────────────
 GITUSER_TMP="$SCRIPT_DIR/.gituser.tmp"
@@ -15,24 +17,46 @@ if [ -f "$GITUSER_TMP" ]; then
   rm -f "$GITUSER_TMP"
 fi
 
-# ── Mark all repos as git safe directories ──────────────────────
-for repo_dir in "$HUB_DIR"/repos/*/; do
-  [ -d "$repo_dir/.git" ] && git config --global --add safe.directory "$repo_dir"
+# ── Set HUB_DIR env var for cross-repo integration tests ──────
+if ! grep -q 'export HUB_DIR=' ~/.bashrc 2>/dev/null; then
+  echo "export HUB_DIR=\"$HUB_DIR\"" >> ~/.bashrc
+fi
+
+# ── Read manifest to get active repos ─────────────────────────
+if [ ! -f "$MANIFEST" ]; then
+  echo "WARNING: manifest.json not found at $MANIFEST — skipping repo setup."
+  echo "post-create.sh complete (no repos configured)."
+  exit 0
+fi
+
+if [ ! -f "$CATALOG" ]; then
+  echo "WARNING: repo-catalog.json not found at $CATALOG — skipping repo setup."
+  echo "post-create.sh complete (no catalog)."
+  exit 0
+fi
+
+REPOS=$(jq -r '.repos[]' "$MANIFEST")
+
+# ── Mark repos as git safe directories ────────────────────────
+for repo_name in $REPOS; do
+  repo_dir="$HUB_DIR/$repo_name"
+  if [ -d "$repo_dir/.git" ]; then
+    git config --global --add safe.directory "$repo_dir"
+  fi
 done
 
-# ── Per-repo venvs ──────────────────────────────────────────────
-# Map each repo to the Python version it needs
-declare -A REPO_PYTHON=(
-  [video_agent]="python3.10"
-  [live2d]="python3.11"
-  [chatterbox]="python3.11"
-  [HalluLens]="python3.12"
-)
-
-for repo_name in "${!REPO_PYTHON[@]}"; do
-  repo_dir="$HUB_DIR/repos/$repo_name"
+# ── Per-repo venvs ────────────────────────────────────────────
+for repo_name in $REPOS; do
+  repo_dir="$HUB_DIR/$repo_name"
   venv_path="$VENV_BASE/$repo_name"
-  py="${REPO_PYTHON[$repo_name]}"
+
+  # Look up Python version from catalog
+  py=$(jq -r --arg name "$repo_name" '.repos[$name].python // empty' "$CATALOG")
+  if [ -z "$py" ]; then
+    echo "WARNING: $repo_name not found in repo-catalog.json — skipping."
+    continue
+  fi
+  py="python${py}"
 
   [ ! -d "$repo_dir" ] && continue
 
@@ -51,5 +75,16 @@ for repo_name in "${!REPO_PYTHON[@]}"; do
     "$venv_path/bin/pip" install -r "$repo_dir/requirements.txt"
   fi
 done
+
+# ── Build-cache symlink for live2d ────────────────────────────
+if echo "$REPOS" | grep -q "^live2d$"; then
+  BUILD_CACHE="/workspaces/build-cache"
+  LIVE2D_BUILD="$HUB_DIR/live2d/build"
+  if [ -d "$BUILD_CACHE" ] && [ ! -L "$LIVE2D_BUILD" ]; then
+    mkdir -p "$(dirname "$LIVE2D_BUILD")"
+    ln -sfn "$BUILD_CACHE" "$LIVE2D_BUILD"
+    echo "Symlinked live2d/build -> $BUILD_CACHE"
+  fi
+fi
 
 echo "post-create.sh complete."
