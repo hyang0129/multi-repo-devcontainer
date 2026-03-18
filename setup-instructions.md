@@ -41,12 +41,15 @@ Present the user with the available repos from `repo-catalog.json`:
 | Repo | Python | Description |
 |------|--------|-------------|
 | video_agent | 3.10 | Multi-agent video content pipeline (LangChain + FFmpeg) |
+| video_agent_long | 3.11 | End-to-end multi-agent pipeline for long-form YouTube videos (5–20 min, 16:9 MP4) |
 | live2d | 3.11 | C++/Python Live2D avatar renderer (D3D11/OpenGL + FastAPI) |
+| tts_server | 3.11 | FastAPI TTS server with unified API over multiple backends (Chatterbox Turbo, Higgs Audio v2) |
 | chatterbox | 3.11 | Chatterbox Turbo TTS server (FastAPI, CUDA required) |
 | HalluLens | 3.12 | LLM hallucination detection via activation analysis (vLLM, CUDA required) |
 
 Auto-include service dependencies from `repo-catalog.json`:
 - If `video_agent` is selected, also include `chatterbox` (TTS provider).
+- If `video_agent_long` is selected, also include `tts_server` (TTS provider).
 
 ## Step 5: Clone Selected Repos
 

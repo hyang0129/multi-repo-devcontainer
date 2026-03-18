@@ -19,10 +19,21 @@
       "url": "https://github.com/hyang0129/HalluLens.git",
       "python": "3.12",
       "description": "LLM hallucination detection via activation analysis (vLLM, CUDA required)"
+    },
+    "tts_server": {
+      "url": "https://github.com/hyang0129/tts_server.git",
+      "python": "3.11",
+      "description": "FastAPI TTS server with unified API over multiple backends (Chatterbox Turbo, Higgs Audio v2) — voice layer for video_agent pipeline"
+    },
+    "video_agent_long": {
+      "url": "https://github.com/hyang0129/video_agent_long.git",
+      "python": "3.11",
+      "description": "End-to-end multi-agent pipeline for long-form YouTube videos (5–20 min, 16:9 MP4)"
     }
   },
   "service_dependencies": {
-    "video_agent": ["chatterbox"]
+    "video_agent": ["chatterbox"],
+    "video_agent_long": ["tts_server"]
   },
   "shared_system_deps": ["cuda-12.8", "cmake-3.28", "ninja", "ffmpeg"],
   "forward_ports": [8000]
