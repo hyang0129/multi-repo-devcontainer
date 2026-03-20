@@ -29,6 +29,11 @@
       "url": "https://github.com/hyang0129/video_agent_long.git",
       "python": "3.11",
       "description": "End-to-end multi-agent pipeline for long-form YouTube videos (5–20 min, 16:9 MP4)"
+    },
+    "agent_agent": {
+      "url": "https://github.com/hyang0129/agent_agent.git",
+      "python": "3.11",
+      "description": "Claude Agent SDK orchestration framework (FastAPI, typer)"
     }
   },
   "service_dependencies": {
