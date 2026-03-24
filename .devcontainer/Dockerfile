@@ -60,11 +60,14 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     && apt-get update && apt-get -y install --no-install-recommends gh
 
 # ── CMake (recent version from Kitware) ─────────────────────────
+# Copy out of cache mount before executing — running a script directly from a
+# BuildKit cache-mounted directory fails with "Text file busy" on overlay fs.
 RUN --mount=type=cache,target=/tmp/cmake-dl \
     wget -q -O /tmp/cmake-dl/cmake.sh \
         "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.sh" \
-    && chmod +x /tmp/cmake-dl/cmake.sh \
-    && /tmp/cmake-dl/cmake.sh --skip-license --prefix=/usr/local
+    && cp /tmp/cmake-dl/cmake.sh /tmp/cmake-exec.sh \
+    && chmod +x /tmp/cmake-exec.sh \
+    && /tmp/cmake-exec.sh --skip-license --prefix=/usr/local
 
 # ── Non-root user ───────────────────────────────────────────────
 RUN groupadd --gid 1000 vscode \

@@ -18,7 +18,8 @@
 
   "runArgs": [
     "--gpus", "all",
-    "--shm-size", "8g"
+    "--shm-size", "8g",
+    "--cpuset-cpus=0-10"
   ],
 
   "containerEnv": {

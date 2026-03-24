@@ -229,3 +229,9 @@ These are already addressed in the config files, but worth knowing:
 - **Git checks out `.sh` with CRLF on Windows** — `.gitattributes` enforces LF to prevent `bash\r` errors.
 - **Bind-mount performance** — venvs and build artifacts use named Docker volumes instead.
 - **`--shm-size 8g`** — required by PyTorch for shared-memory data loading (chatterbox, HalluLens).
+- **`--cpuset-cpus=0-10`** — limits each hub container to the first 11 CPU cores. WSL 2 defaults to using all logical cores, which causes Docker Desktop to become unresponsive when multiple containers are running. Set WSL's core limit to 12 or fewer in `%USERPROFILE%\.wslconfig`:
+  ```ini
+  [wsl2]
+  processors=12
+  ```
+  The `--cpuset-cpus=0-10` cap then ensures all hub containers together leave at least one core free for the host.
