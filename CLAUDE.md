@@ -26,6 +26,21 @@ Read `setup-instructions.md` for the full procedure. Summary:
 3. Select repos, clone them, generate manifest/workspace/CLAUDE.md
 4. Open in VS Code and "Reopen in Container"
 
+## Resource Limits (runArgs)
+
+Each hub container is created with these resource constraints to prevent CPU/RAM contention when multiple hubs run simultaneously:
+
+| Arg | Value | Purpose |
+|-----|-------|---------|
+| `--cpuset-cpus` | `0-7` | Pin container to cores 0–7; must not exceed WSL `processors` setting |
+| `--cpus` | `8` | Cap total CPU time to 8 logical CPUs |
+| `--memory` | `16g` | Hard RAM limit per container |
+| `--memory-swap` | `16g` | No extra swap beyond the memory limit |
+| `--memory-reservation` | `8g` | Soft reservation; Docker reclaims above this under pressure |
+| `--cpu-shares` | `64` | Low relative priority so host stays responsive |
+
+`~/.wslconfig` is set to `processors=9`; containers are pinned to cores 0–7, leaving core 8 free for WSL/Docker host overhead. If you change `--cpuset-cpus`, update `.wslconfig` to `processors=<max_core+2>` and `docker rm` all hub containers before reopening.
+
 ## Dev Container
 
 Before creating or modifying any devcontainer file, read `~/.claude/devcontainer-guide.md` first.

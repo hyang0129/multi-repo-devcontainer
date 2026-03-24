@@ -229,9 +229,11 @@ These are already addressed in the config files, but worth knowing:
 - **Git checks out `.sh` with CRLF on Windows** — `.gitattributes` enforces LF to prevent `bash\r` errors.
 - **Bind-mount performance** — venvs and build artifacts use named Docker volumes instead.
 - **`--shm-size 8g`** — required by PyTorch for shared-memory data loading (chatterbox, HalluLens).
-- **`--cpuset-cpus=0-10`** — limits each hub container to the first 11 CPU cores. WSL 2 defaults to using all logical cores, which causes Docker Desktop to become unresponsive when multiple containers are running. Set WSL's core limit to 12 or fewer in `%USERPROFILE%\.wslconfig`:
+- **`--cpuset-cpus=0-7`** — pins each hub container to cores 0–7 (8 cores). WSL 2 defaults to using all logical cores, which causes Docker Desktop to become unresponsive when multiple containers are running. Set WSL's processor limit in `%USERPROFILE%\.wslconfig` to match:
   ```ini
   [wsl2]
-  processors=12
+  processors=9
   ```
-  The `--cpuset-cpus=0-10` cap then ensures all hub containers together leave at least one core free for the host.
+  WSL gets 9 cores; containers are pinned to 0–7, leaving core 8 free for WSL/Docker host overhead. If you change `--cpuset-cpus`, update `.wslconfig` to `processors=<max_core+2>` (one spare for the host) and `docker rm` all hub containers before reopening them.
+- **`--cpus 8`** — caps total CPU time to 8 logical CPUs worth, preventing any single container from saturating the host during heavy ML workloads.
+- **`--memory 16g` / `--memory-reservation 8g`** — hard cap of 16 GB RAM per container with a soft reservation of 8 GB, reducing contention when multiple hubs are running simultaneously.
