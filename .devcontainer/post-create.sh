@@ -17,6 +17,18 @@ if [ -f "$GITUSER_TMP" ]; then
   rm -f "$GITUSER_TMP"
 fi
 
+# ── Symlink dot-claude repo into ~/.claude ────────────────────
+DOT_CLAUDE="/home/vscode/.dot-claude"
+if [ -d "$DOT_CLAUDE" ]; then
+  for f in CLAUDE.md settings.json; do
+    ln -sf "$DOT_CLAUDE/$f" "/home/vscode/.claude/$f"
+  done
+  for d in commands guides; do
+    rm -rf "/home/vscode/.claude/$d"
+    ln -sf "$DOT_CLAUDE/$d" "/home/vscode/.claude/$d"
+  done
+fi
+
 # ── Set HUB_DIR env var for cross-repo integration tests ──────
 if ! grep -q 'export HUB_DIR=' ~/.bashrc 2>/dev/null; then
   echo "export HUB_DIR=\"$HUB_DIR\"" >> ~/.bashrc

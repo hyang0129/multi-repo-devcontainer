@@ -16,7 +16,7 @@ Scan for existing hub directories:
 ls -d d:/containers/hub_*/ 2>/dev/null
 ```
 
-Pick the next available number (e.g., if `hub_1` and `hub_2` exist, use `hub_3`).
+Pick the next available number. For example, if `hub_1` and `hub_2` exist, use `hub_3`.
 
 ## Step 2: Create Instance Directory
 
@@ -41,19 +41,19 @@ Present the user with the available repos from `repo-catalog.json`:
 | Repo | Python | Description |
 |------|--------|-------------|
 | video_agent | 3.10 | Multi-agent video content pipeline (LangChain + FFmpeg) |
-| video_agent_long | 3.11 | End-to-end multi-agent pipeline for long-form YouTube videos (5–20 min, 16:9 MP4) |
+| video_agent_long | 3.11 | End-to-end multi-agent pipeline for long-form YouTube videos (5-20 min, 16:9 MP4) |
 | live2d | 3.11 | C++/Python Live2D avatar renderer (D3D11/OpenGL + FastAPI) |
 | tts_server | 3.11 | FastAPI TTS server with unified API over multiple backends (Chatterbox Turbo, Higgs Audio v2) |
 | chatterbox | 3.11 | Chatterbox Turbo TTS server (FastAPI, CUDA required) |
 | HalluLens | 3.12 | LLM hallucination detection via activation analysis (vLLM, CUDA required) |
 
 Auto-include service dependencies from `repo-catalog.json`:
-- If `video_agent` is selected, also include `chatterbox` (TTS provider).
-- If `video_agent_long` is selected, also include `tts_server` (TTS provider).
+- If `video_agent` is selected, also include `chatterbox`.
+- If `video_agent_long` is selected, also include `tts_server`.
 
 ## Step 5: Clone Selected Repos
 
-Clone each selected repo directly into the instance directory (no `repos/` subdirectory):
+Clone each selected repo directly into the instance directory. Do not create a `repos/` subdirectory.
 
 ```bash
 git clone <url> d:/containers/hub_N/<repo_name>
@@ -66,27 +66,38 @@ Create `d:/containers/hub_N/manifest.json`:
 ```json
 {
   "instance_name": "hub_N",
+  "assistant_profile": "dual",
   "repos": ["<selected_repo_1>", "<selected_repo_2>"],
   "created": "YYYY-MM-DD"
 }
 ```
 
+Assistant profile guidance:
+- `dual` is the default and represents the intended shared hub with both assistants available
+- `claude` is a single-assistant option when you want Claude-specific isolation
+- `codex` is a single-assistant option when you want Codex-specific isolation
+
+The multi-repo layout does not change by assistant. Only the assistant-facing bootstrap layer should vary.
+
 ## Step 7: Patch devcontainer.json
 
 Edit `d:/containers/hub_N/.devcontainer/devcontainer.json`:
 
-1. Set `"workspaceFolder"` to `"/workspaces/hub_N"`
+1. Set `"workspaceFolder"` to `"/workspaces/hub_N"`.
 2. Set `"workspaceMount"` target to `/workspaces/hub_N`:
    ```
    "source=${localWorkspaceFolder},target=/workspaces/hub_N,type=bind,consistency=cached"
    ```
-3. Set `"forwardPorts"` based on instance number: `[8000 + N - 1]`
-   - hub_1: `[8000]`, hub_2: `[8001]`, hub_3: `[8002]`, etc.
-4. If live2d is included, update the build-cache mount target:
+3. Set `"forwardPorts"` based on instance number: `[8000 + N - 1]`.
+   - hub_1: `[8000]`
+   - hub_2: `[8001]`
+   - hub_3: `[8002]`
+4. If `live2d` is included, update the build-cache mount target:
    ```
    "source=${localWorkspaceFolderBasename}-build-cache,target=/workspaces/hub_N/live2d/build,type=volume"
    ```
-   If live2d is NOT included, remove the build-cache mount entirely.
+   If `live2d` is not included, remove the build-cache mount entirely.
+5. Keep assistant-specific mounts and extensions in the bootstrap layer. Do not change repo layout or venv layout per assistant.
 
 ## Step 8: Generate workspace.code-workspace
 
@@ -112,9 +123,22 @@ Create `d:/containers/hub_N/workspace.code-workspace`:
 
 Add one folder entry and one `git.scanRepositories` entry per selected repo.
 
-## Step 9: Generate CLAUDE.md
+## Step 9: Generate Hub Guardrail Docs
 
-Create `d:/containers/hub_N/CLAUDE.md` using this template:
+Generate assistant-facing hub instructions for the selected profile.
+
+### Current implementation
+
+Today, the template still generates `d:/containers/hub_N/CLAUDE.md` and relies on Claude-specific instructions, even if the intended profile is `dual`.
+
+### Target model
+
+The long-term model is:
+- `dual` hubs generate both Claude-facing and Codex-facing hub instructions
+- `claude` hubs generate `CLAUDE.md`
+- `codex` hubs generate Codex-facing hub instructions with the same cross-repo safety rules
+
+For the current template, create `d:/containers/hub_N/CLAUDE.md` using this template:
 
 ```markdown
 # Multi-Repo Workspace: hub_N
@@ -126,22 +150,22 @@ Each repo is a separate project with its own git history, dependencies, and purp
 
 ### Rules
 
-1. **NEVER modify files in a repo other than the one the user explicitly names.**
-   If the user says "add logging" without specifying which repo, you MUST ask:
+1. **Never modify files in a repo other than the one the user explicitly names.**
+   If the user says "add logging" without specifying which repo, ask:
    "Which repo should I modify? This workspace contains: <comma-separated repo list>."
 
 2. **Before editing any file, confirm the repo it belongs to** by checking
-   the path (<repo_name>/). State which repo you are modifying.
+   the path (`<repo_name>/`). State which repo you are modifying.
 
-3. **Each repo has its own CLAUDE.md.** Before working in a repo, read
-   `<repo_name>/CLAUDE.md` for repo-specific instructions.
+3. **Each repo has its own assistant-facing repo instructions.**
+   For the current template, read `<repo_name>/CLAUDE.md` before working in a repo.
    Those instructions take precedence for that repo's files.
 
 4. **Do not cross-pollinate dependencies.** Each repo has its own venv at
-   `/workspaces/.venvs/<repo-name>/`. Never pip-install into the system
-   Python or another repo's venv.
+   `/workspaces/.venvs/<repo-name>/`. Never install into the system Python
+   or another repo's venv.
 
-5. **Git operations are per-repo.** Always cd into the repo directory
+5. **Git operations are per-repo.** Always `cd` into the repo directory
    before running git commands. Never run git from the hub root expecting
    it to affect a repo.
 
@@ -170,12 +194,13 @@ Before creating or modifying any devcontainer file, read ~/.claude/devcontainer-
 ## Step 10: Instruct User
 
 Tell the user:
-1. Open `d:/containers/hub_N/` in VS Code
-2. Use the command palette: "Dev Containers: Reopen in Container"
-3. Open the workspace file when prompted: `workspace.code-workspace`
+1. Open `d:/containers/hub_N/` in VS Code.
+2. Use the command palette: `Dev Containers: Reopen in Container`.
+3. Open the workspace file when prompted: `workspace.code-workspace`.
 
 ## Notes
 
-- **Instances are NOT git repos.** Only the individual code repos have `.git/` directories. This eliminates git confusion between the hub and nested repos.
+- **Instances are not git repos.** Only the individual code repos have `.git/` directories.
 - **The template repo on GitHub is the source of truth.** To update devcontainer config, update the template and re-copy `.devcontainer/` to instances.
-- **Volume names are auto-scoped** via `${localWorkspaceFolderBasename}` in mount definitions (e.g., `hub_1-venvs`, `hub_2-venvs`), so instances never collide.
+- **Volume names are auto-scoped** via `${localWorkspaceFolderBasename}`, so instances never collide.
+- **Assistant support should stay pluggable.** `dual` should be the default hub profile. Only use separate Claude-versus-Codex layouts when you specifically want runtime isolation between assistants.
