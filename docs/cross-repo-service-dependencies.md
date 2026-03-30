@@ -130,5 +130,5 @@ When adding a new cross-repo service dependency:
 - [ ] Add the relationship to the table above.
 - [ ] Add a session-scoped fixture in the consumer's `tests/integration/conftest.py`.
 - [ ] Register the `requires_<provider>` pytest marker in the consumer's `pytest.ini`.
-- [ ] Add a note to the provider's `CLAUDE.md` describing its role as a service dependency.
+- [ ] Add a note to the provider's assistant-facing repo instructions (`CLAUDE.md` and/or `AGENTS.md`) describing its role as a service dependency.
 - [ ] Verify that tests skip cleanly when the provider venv is absent.
