@@ -15,6 +15,7 @@ This repository is a **template** for creating devcontainer instances. It is nev
 | `repo-catalog.json` | Machine-readable registry of all available repos (URLs, Python versions, descriptions) |
 | `setup-instructions.md` | Step-by-step procedure for creating a new instance |
 | `.devcontainer/` | Dockerfile, `devcontainer.json`, `initialize.cmd`, `post-create.sh` copied to each instance |
+| `docs/assistant-profiles.md` | Concrete profile matrix for `dual`, `claude`, and `codex` hubs |
 | `docs/cross-repo-service-dependencies.md` | How repos integrate via HTTP APIs at runtime |
 
 ## Creating a New Instance
@@ -35,7 +36,13 @@ The multi-repo hub architecture is assistant-agnostic:
 - `manifest.json` should record the assistant profile for the hub.
 - Assistant-specific behavior belongs in generated hub docs, mounts, extensions, and post-create hooks.
 
-At the moment, the concrete implementation is still Claude-first, so generated hub guardrails are `CLAUDE.md`. Codex support should be added as an equivalent bootstrap layer so the documented `dual` default becomes real, not as a separate hub architecture.
+The checked-in bootstrap now targets the `dual` profile by default. Generated hubs should carry:
+
+- `dual`: both `CLAUDE.md` and `AGENTS.md`
+- `claude`: `CLAUDE.md`
+- `codex`: `AGENTS.md`
+
+That assistant-facing layer should vary without changing repo layout or dependency isolation.
 
 ## Resource Limits (runArgs)
 

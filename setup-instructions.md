@@ -127,18 +127,12 @@ Add one folder entry and one `git.scanRepositories` entry per selected repo.
 
 Generate assistant-facing hub instructions for the selected profile.
 
-### Current implementation
-
-Today, the template still generates `d:/containers/hub_N/CLAUDE.md` and relies on Claude-specific instructions, even if the intended profile is `dual`.
-
-### Target model
-
-The long-term model is:
+The generation model is:
 - `dual` hubs generate both Claude-facing and Codex-facing hub instructions
 - `claude` hubs generate `CLAUDE.md`
 - `codex` hubs generate Codex-facing hub instructions with the same cross-repo safety rules
 
-For the current template, create `d:/containers/hub_N/CLAUDE.md` using this template:
+For `dual` and `claude`, create `d:/containers/hub_N/CLAUDE.md` using this template:
 
 ```markdown
 # Multi-Repo Workspace: hub_N
@@ -191,6 +185,53 @@ source /workspaces/.venvs/<repo-name>/bin/activate
 Before creating or modifying any devcontainer file, read ~/.claude/devcontainer-guide.md first.
 ```
 
+For `dual` and `codex`, create `d:/containers/hub_N/AGENTS.md` with the same cross-repo safety rules, adapted for Codex-facing instructions:
+
+```markdown
+# Multi-Repo Workspace: hub_N
+
+## Context Segregation (MANDATORY)
+
+This workspace contains multiple independent repos as direct subdirectories.
+Each repo is a separate project with its own git history, dependencies, and purpose.
+
+### Rules
+
+1. Never modify files in a repo other than the one the user explicitly names.
+   If the user gives an ambiguous request, ask which repo should be modified.
+
+2. Before editing any file, confirm the repo it belongs to by checking the
+   path (`<repo_name>/`). State which repo you are modifying.
+
+3. Each repo has its own repo-level instructions.
+   Read `<repo_name>/AGENTS.md` when present, and otherwise check the repo's
+   assistant-facing instructions before changing files there.
+
+4. Do not cross-pollinate dependencies. Each repo has its own venv at
+   `/workspaces/.venvs/<repo-name>/`. Never install into the system Python
+   or another repo's venv.
+
+5. Git operations are per-repo. Always run git commands from the intended repo,
+   not from the hub root.
+
+## Repo Inventory
+
+| Repo | Path | Python | Venv | Purpose |
+|------|------|--------|------|---------|
+(one row per selected repo, with data from repo-catalog.json)
+
+## Shared Dependencies
+
+- CUDA 12.8 + cuDNN (system-level, in Docker image)
+- Python 3.10, 3.11, 3.12 (all installed; venvs pin per-repo version)
+- CMake 3.28, Ninja (for live2d C++ builds)
+- FFmpeg
+
+## Activating a Repo's Venv
+
+source /workspaces/.venvs/<repo-name>/bin/activate
+```
+
 ## Step 10: Instruct User
 
 Tell the user:
@@ -204,3 +245,4 @@ Tell the user:
 - **The template repo on GitHub is the source of truth.** To update devcontainer config, update the template and re-copy `.devcontainer/` to instances.
 - **Volume names are auto-scoped** via `${localWorkspaceFolderBasename}`, so instances never collide.
 - **Assistant support should stay pluggable.** `dual` should be the default hub profile. Only use separate Claude-versus-Codex layouts when you specifically want runtime isolation between assistants.
+- **The checked-in devcontainer is the `dual` bootstrap.** For `claude` or `codex` hubs, remove only the assistant-specific mounts, extensions, and generated guardrail docs that do not apply.

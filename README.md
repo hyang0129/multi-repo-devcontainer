@@ -24,8 +24,8 @@ d:/containers/
     .devcontainer/                  <-- Copied from template, patched per-instance
     manifest.json                   <-- Active repos + assistant profile
     workspace.code-workspace        <-- Generated multi-root workspace
-    CLAUDE.md                       <-- Current Claude-oriented hub guardrails
-    <assistant-specific docs>       <-- Future Codex/dual-agent guardrails
+    CLAUDE.md                       <-- Generated for dual/claude hubs
+    AGENTS.md                       <-- Generated for dual/codex hubs
     video_agent/                    <-- Cloned repo (direct child, no repos/ subdir)
     live2d/
     chatterbox/
@@ -69,7 +69,7 @@ Each hub should support one of these assistant profiles:
 - `claude` for Claude-specific mounts, extension, and hub guardrails
 - `codex` for Codex-specific mounts, tooling, and hub guardrails
 
-The intended default is now **dual-assistant hubs**. The current template implementation is still **Claude-first**, so Codex bootstrap work is still needed to fully match this default.
+The default checked-in template is now a **dual-assistant bootstrap**. Single-assistant hubs should be created by trimming only the assistant-specific mounts, extensions, and generated guardrail docs for the chosen profile.
 
 **Manual steps:**
 
@@ -119,7 +119,13 @@ A hub should carry assistant-facing guardrails that prevent unintended cross-rep
 | Hub | Assistant-specific hub instructions | Enforces "ask which repo" for ambiguous prompts. Repo inventory. |
 | Per-repo | Assistant-specific repo instructions | Repo-specific build commands, architecture, conventions. |
 
-Today, the concrete implementation is a two-tier `CLAUDE.md` strategy. Codex support should be added by generating an equivalent Codex-facing instruction layer rather than by changing repo layout or dependency isolation.
+The concrete implementation should generate:
+
+- `dual`: both `CLAUDE.md` and `AGENTS.md`
+- `claude`: `CLAUDE.md`
+- `codex`: `AGENTS.md`
+
+That assistant-facing layer should vary without changing repo layout or dependency isolation. See [docs/assistant-profiles.md](docs/assistant-profiles.md) for the profile matrix.
 
 ### 3. Shared Dependencies, Isolated Environments
 
